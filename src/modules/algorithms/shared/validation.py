@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 
 from src.modules.algorithms.shared.memory import MemoryManager
+from src.modules.constants import CRAFTAX_MAX_RETURN
 
 
 def run_eval_rollout(train_state: Any, env: Any, env_params: Any, rng: jnp.ndarray, num_eval_envs: int,
@@ -80,6 +81,10 @@ def compute_eval_metrics(metrics: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarr
         "eval/total_episodes": total_episodes,
         "eval/total_reward": jnp.sum(metrics["reward"]),
     }
+
+    result["eval/normalized_return_pct_mean"] = (result["eval/episode_return_mean"] / CRAFTAX_MAX_RETURN) * 100.0
+    result["eval/normalized_return_pct_max"] = (result["eval/episode_return_max"] / CRAFTAX_MAX_RETURN) * 100.0
+    result["eval/normalized_return_pct_min"] = (result["eval/episode_return_min"] / CRAFTAX_MAX_RETURN) * 100.0
 
     if "info" in metrics:
         def _compute_masked_mean(x):

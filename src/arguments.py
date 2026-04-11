@@ -21,7 +21,7 @@ class EnvConfig:
 class TrainConfig:
     total_timesteps: int = 1_000_000_000
     seed: int = field(default_factory=lambda: random.randint(1, 10000))
-    lr: float = 4e-4
+    lr: float = 3e-4
     lr_linear_decay: bool = True
     max_grad_norm: float = 1.0
     gamma: float = 0.999

@@ -1,3 +1,5 @@
+CRAFTAX_MAX_RETURN = 226.0
+
 CRAFTAX_ACHIEVEMENT_KEYS = (
 
     # Tier 0 - Basic

@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 
 from src.modules.algorithms.shared.types import Transition
+from src.modules.constants import CRAFTAX_MAX_RETURN
 
 
 def prepare_batch_transformer(traj_batch: Transition, advantages: jnp.ndarray, targets: jnp.ndarray, start_memories: jnp.ndarray) -> Tuple:
@@ -31,5 +32,6 @@ def compute_metrics(traj_batch: Transition, train_state: Any, total_timesteps: i
     metric["env_step"] = train_state.timesteps
     metric["update_steps"] = train_state.n_updates
     metric["progress_pct"] = (train_state.timesteps / total_timesteps) * 100.0
+    metric["normalized_return_pct"] = (metric["returned_episode_returns"] / CRAFTAX_MAX_RETURN) * 100.0
 
     return metric

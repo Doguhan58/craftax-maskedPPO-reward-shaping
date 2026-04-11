@@ -16,6 +16,7 @@ from src.modules.environments.craftax_env import CraftaxEnvironment
 from src.modules.model.factory import create_network
 from src.modules.algorithms.shared.memory import MemoryManager
 from src.modules.algorithms.shared.validation import compute_eval_metrics
+from src.modules.constants import CRAFTAX_MAX_RETURN
 
 
 @dataclass
@@ -216,6 +217,10 @@ def main():
         "eval/total_episodes": float(np.sum(all_chunk_metrics["eval/total_episodes"])),
         "eval/total_reward": float(np.sum(all_chunk_metrics["eval/total_reward"]))}
 
+    metrics["eval/normalized_return_pct_mean"] = (metrics["eval/episode_return_mean"] / CRAFTAX_MAX_RETURN) * 100.0
+    metrics["eval/normalized_return_pct_max"] = (metrics["eval/episode_return_max"] / CRAFTAX_MAX_RETURN) * 100.0
+    metrics["eval/normalized_return_pct_min"] = (metrics["eval/episode_return_min"] / CRAFTAX_MAX_RETURN) * 100.0
+
     sps = (actual_steps * eval_config.num_envs) / max(dt, 1e-8)
     metrics["eval/sps"] = sps
     metrics["eval/wall_time"] = dt
@@ -236,6 +241,9 @@ def main():
     print(f"Min return: {metrics.get('eval/episode_return_min', 0):.3f}")
     print(f"Mean length: {metrics.get('eval/episode_length_mean', 0):.1f}")
     print(f"Total reward: {metrics.get('eval/total_reward', 0):.3f}")
+    print(f"Normalized mean return: {metrics.get('eval/normalized_return_pct_mean', 0):.2f}%")
+    print(f"Normalized max return: {metrics.get('eval/normalized_return_pct_max', 0):.2f}%")
+    print(f"Normalized min return: {metrics.get('eval/normalized_return_pct_min', 0):.2f}%")
 
 
 if __name__ == "__main__":
