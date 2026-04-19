@@ -10,8 +10,9 @@ from flax import struct
 @struct.dataclass
 class RewardShapingEnvState:
     env_state: Any
-    max_stone: jnp.ndarray #(num_envs,) high-water mark
-    prev_features: jnp.ndarray  #(num_envs, 11) cached features from previous step
+    max_stone: jnp.ndarray #scalar int, high-water mark
+    prev_features: jnp.ndarray #(14,) cached features from previous step
+    floor_cleared: jnp.ndarray #(9,) floor clears this episode
 
 
 #indices
@@ -26,44 +27,49 @@ _LEVEL = 7
 _STR = 8
 _DEX = 9
 _INT = 10
+_SAPPHIRE = 11
+_RUBY = 12
+_FLOOR_CLEARED = 13
 
 
 class RewardShapingWrapper:
-    def __init__(self, env, num_envs: int, config):
+    def __init__(self, env, config):
         self._env = env
-        self.num_envs = num_envs
         self.max_shaping = config.max_shaping_per_step
 
         self._weights = jnp.array([config.w_kill, config.w_iron, config.w_diamond, config.w_coal,
                                    config.w_wood, config.w_stone, config.w_armor, config.w_levelup,
-                                   config.w_levelup, config.w_levelup])
+                                   config.w_levelup, config.w_levelup, config.w_sapphire, config.w_ruby])
+
+        self._w_depth = config.w_depth
+        self._depth_gamma = config.depth_gamma
+        self._kill_floor_scale = config.kill_floor_scale
+        self._w_kill_base = config.w_kill
+        self._w_floor_clear = config.w_floor_clear
 
 
     def __getattr__(self, name):
         return getattr(self._env, name)
 
 
-    def _get_inner_state(self, state):
-        inner = state
-        while hasattr(inner, 'env_state'):
-            inner = inner.env_state
-
-        return inner
-
-
     def _extract_features_array(self, inner):
         level = inner.player_level.astype(jnp.int32)
-        kills = inner.monsters_killed[jnp.arange(inner.monsters_killed.shape[0]), level]
+        kills = inner.monsters_killed[level]
         inv = inner.inventory
+        floor_cleared = (kills >= 8).astype(jnp.float32)
 
-        return jnp.stack([kills, inv.iron, inv.diamond, inv.coal, inv.wood, inv.stone, jnp.sum(inv.armour, axis=-1), level, inner.player_strength, inner.player_dexterity, inner.player_intelligence], axis=-1).astype(jnp.float32)
+        return jnp.stack([kills, inv.iron, inv.diamond, inv.coal, inv.wood, inv.stone, jnp.sum(inv.armour, axis=-1), level,
+                          inner.player_strength, inner.player_dexterity, inner.player_intelligence,
+                          inv.sapphire, inv.ruby, floor_cleared]).astype(jnp.float32)
 
 
     @partial(jax.jit, static_argnums=(0, 2))
     def reset(self, rng, params=None):
         obs, env_state = self._env.reset(rng, params)
-        inner = self._get_inner_state(env_state)
-        state = RewardShapingEnvState(env_state=env_state, max_stone=jnp.zeros(self.num_envs, dtype=jnp.int32), prev_features=self._extract_features_array(inner))
+        inner = env_state.env_state
+        state = RewardShapingEnvState(env_state=env_state, max_stone=jnp.int32(0),
+                                      prev_features=self._extract_features_array(inner),
+                                      floor_cleared=jnp.zeros((9,), dtype=jnp.bool_))
 
         return obs, state
 
@@ -72,39 +78,68 @@ class RewardShapingWrapper:
     def step(self, rng, state, action, params=None):
         obs, new_inner_state, reward, done, info = self._env.step(rng, state.env_state, action, params)
 
-        feat_after = self._extract_features_array(self._get_inner_state(new_inner_state))
+        feat_after = self._extract_features_array(new_inner_state.env_state)
         feat_before = state.prev_features
 
         #kill check: capped at 8, same floor, floor > 0
-        kills_b = jnp.minimum(feat_before[:, _KILLS], 8)
-        kills_a = jnp.minimum(feat_after[:, _KILLS], 8)
-        kill_happened = ((kills_a > kills_b) & (feat_before[:, _LEVEL] > 0) & (feat_after[:, _LEVEL] == feat_before[:, _LEVEL]))
+        kills_b = jnp.minimum(feat_before[_KILLS], 8)
+        kills_a = jnp.minimum(feat_after[_KILLS], 8)
+        level_before = feat_before[_LEVEL]
+        level_after_f = feat_after[_LEVEL]
+        same_floor = level_after_f == level_before
+        kill_happened = (kills_a > kills_b) & (level_before > 0) & same_floor
 
         conditions = jnp.stack([ kill_happened,
-                                 feat_after[:, _IRON] > feat_before[:, _IRON],
-                                 feat_after[:, _DIAMOND] > feat_before[:, _DIAMOND],
-                                 feat_after[:, _COAL] > feat_before[:, _COAL],
-                                 feat_after[:, _WOOD] > feat_before[:, _WOOD],
-                                 feat_after[:, _STONE] > state.max_stone,
-                                 feat_after[:, _ARMOR] > feat_before[:, _ARMOR],
-                                 feat_after[:, _STR] > feat_before[:, _STR],
-                                 feat_after[:, _DEX] > feat_before[:, _DEX],
-                                 feat_after[:, _INT] > feat_before[:, _INT]],
-                               axis=-1)
+                                 feat_after[_IRON] > feat_before[_IRON],
+                                 feat_after[_DIAMOND] > feat_before[_DIAMOND],
+                                 feat_after[_COAL] > feat_before[_COAL],
+                                 feat_after[_WOOD] > feat_before[_WOOD],
+                                 feat_after[_STONE] > state.max_stone,
+                                 feat_after[_ARMOR] > feat_before[_ARMOR],
+                                 feat_after[_STR] > feat_before[_STR],
+                                 feat_after[_DEX] > feat_before[_DEX],
+                                 feat_after[_INT] > feat_before[_INT],
+                                 feat_after[_SAPPHIRE] > feat_before[_SAPPHIRE],
+                                 feat_after[_RUBY] > feat_before[_RUBY]])
 
 
-        bonus = (conditions.astype(jnp.float32) * self._weights).sum(axis=-1)
-        bonus = jnp.clip(bonus, 0.0, self.max_shaping)
+        bonus = (conditions.astype(jnp.float32) * self._weights).sum()
+
+        #floor-scaled kill extra: w_kill * kill_floor_scale * level
+        floor_kill_extra = kill_happened.astype(jnp.float32) * self._w_kill_base * self._kill_floor_scale * level_after_f
+        bonus = bonus + floor_kill_extra
+
+        #depth pbrs: F(s,s') = gamma * phi(s') - phi(s), phi(s) = w_depth * level
+        phi_before = self._w_depth * level_before
+        phi_after = self._w_depth * level_after_f
+        depth_bonus = self._depth_gamma * phi_after - phi_before
+        bonus = bonus + depth_bonus
+
+        #floor-clear milestone
+        level_after = level_after_f.astype(jnp.int32)
+        just_cleared = ((feat_before[_FLOOR_CLEARED] < 0.5) & (feat_after[_FLOOR_CLEARED] >= 0.5) & same_floor & (level_after_f > 0))
+
+        already_cleared_this_ep = state.floor_cleared[level_after]
+        floor_clear_bonus = just_cleared.astype(jnp.float32) * (~already_cleared_this_ep).astype(jnp.float32) * self._w_floor_clear
+        bonus = bonus + floor_clear_bonus
+
+        #symmetric clip as pbrs can be negative on ascend
+        bonus = jnp.clip(bonus, -self.max_shaping, self.max_shaping)
 
         #zero on episode end
-        bonus = bonus * (1.0 - done.astype(jnp.float32))
+        done_f = done.astype(jnp.float32)
+        bonus = bonus * (1.0 - done_f)
 
         info["shaping_reward"] = bonus
+        info["depth_bonus"] = depth_bonus * (1.0 - done_f)
         reward = reward + bonus
 
-        new_max_stone = jnp.maximum(state.max_stone, feat_after[:, _STONE].astype(jnp.int32))
+        new_max_stone = jnp.maximum(state.max_stone, feat_after[_STONE].astype(jnp.int32))
         new_max_stone = jnp.where(done, jnp.int32(0), new_max_stone)
 
-        new_state = RewardShapingEnvState(env_state=new_inner_state, max_stone=new_max_stone, prev_features=feat_after)
+        new_floor_cleared = state.floor_cleared.at[level_after].set(already_cleared_this_ep | just_cleared)
+        new_floor_cleared = jnp.where(done, jnp.zeros_like(new_floor_cleared), new_floor_cleared)
+
+        new_state = RewardShapingEnvState(env_state=new_inner_state, max_stone=new_max_stone, prev_features=feat_after, floor_cleared=new_floor_cleared)
 
         return obs, new_state, reward, done, info

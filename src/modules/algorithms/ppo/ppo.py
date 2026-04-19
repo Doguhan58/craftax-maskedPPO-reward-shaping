@@ -382,13 +382,6 @@ class PPOAlgorithm(BaseAlgorithm):
             metric["entropy"] = jnp.mean(entropy)
             metric["grad_norm"] = jnp.mean(grad_norm)
 
-            #action mask metrics
-            if use_action_masking and traj_batch.action_mask is not None:
-                mask_sum = traj_batch.action_mask.sum(axis=-1)  #[T, B]
-                metric["action_mask_valid_mean"] = jnp.mean(mask_sum)
-                metric["action_mask_valid_min"] = jnp.min(mask_sum)
-                metric["action_mask_valid_max"] = jnp.max(mask_sum)
-
             avg_ret = metric.get("returned_episode_returns", jnp.array(0.0)).astype(jnp.float32)
             avg_ret_ema = update_avg_return_ema(avg_ret_ema, avg_ret)
 

@@ -5,7 +5,8 @@ import jax.numpy as jnp
 
 from src.modules.algorithms.shared.memory import MemoryManager
 from src.modules.constants import CRAFTAX_MAX_RETURN
-
+from src.modules.environments.wrappers import LogWrapper, BatchEnvWrapper
+from src.modules.environments.action_mask_wrapper import ActionMaskWrapper
 
 def run_eval_rollout(train_state: Any, env: Any, env_params: Any, rng: jnp.ndarray, num_eval_envs: int,
                      num_eval_steps: int, memory_manager: MemoryManager, use_action_masking: bool = False, action_dim: int = 42) -> Dict[str, jnp.ndarray]:
@@ -102,9 +103,6 @@ def compute_eval_metrics(metrics: Dict[str, jnp.ndarray]) -> Dict[str, jnp.ndarr
 
 
 def create_eval_env(config, basic_env):
-    from src.modules.environments.wrappers import LogWrapper, BatchEnvWrapper
-    from src.modules.environments.action_mask_wrapper import ActionMaskWrapper
-
     if config.train.use_action_masking:
         basic_env = ActionMaskWrapper(basic_env)
 

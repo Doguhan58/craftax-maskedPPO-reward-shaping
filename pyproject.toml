@@ -14,22 +14,5 @@ dependencies = [
     "imageio==2.37.0",
     "imageio-ffmpeg==0.6.0",
     "wandb==0.23.0",
-]
-
-[tool.uv]
-constraint-dependencies = [
-    "nvidia-cublas<13.2",
-    "nvidia-cuda-crt<13.1",
-    "nvidia-cuda-cupti<13.1",
-    "nvidia-cuda-nvcc<13.1",
-    "nvidia-cuda-nvrtc<13.1",
-    "nvidia-cuda-runtime<13.1",
-    "nvidia-cudnn-cu13<9.17",
-    "nvidia-cufft<12.1",
-    "nvidia-cusolver<12.1",
-    "nvidia-cusparse<12.7",
-    "nvidia-nccl-cu13<2.29",
-    "nvidia-nvjitlink<13.1",
-    "nvidia-nvshmem-cu13<3.5",
-    "nvidia-nvvm<13.1",
+    "matplotlib>=3.8",
 ]

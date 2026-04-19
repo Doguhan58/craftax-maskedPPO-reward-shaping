@@ -92,7 +92,17 @@ class RewardShapingConfig:
     w_stone: float = 0.01
     w_armor: float = 3.0
     w_levelup: float = 1.5  #(STR/DEX/INT)
+    w_sapphire: float = 1.0
+    w_ruby: float = 1.0
     max_shaping_per_step: float = 8.0
+    w_floor_clear: float = 3.0
+
+    #depth PBRS: phi(s) = w_depth * player_level, F = depth_gamma * phi(s') - phi(s)
+    w_depth: float = 2.0
+    depth_gamma: float = 0.999
+
+    #floor-scaled kills: effective = w_kill * (1 + kill_floor_scale * level)
+    kill_floor_scale: float = 0.25
 
 
 @dataclass
@@ -198,7 +208,13 @@ class Config:
             "reward_shaping_w_stone": self.reward_shaping.w_stone,
             "reward_shaping_w_armor": self.reward_shaping.w_armor,
             "reward_shaping_w_levelup": self.reward_shaping.w_levelup,
-            "reward_shaping_max_per_step": self.reward_shaping.max_shaping_per_step}
+            "reward_shaping_max_per_step": self.reward_shaping.max_shaping_per_step,
+            "reward_shaping_w_depth": self.reward_shaping.w_depth,
+            "reward_shaping_depth_gamma": self.reward_shaping.depth_gamma,
+            "reward_shaping_kill_floor_scale": self.reward_shaping.kill_floor_scale,
+            "reward_shaping_w_sapphire": self.reward_shaping.w_sapphire,
+            "reward_shaping_w_ruby": self.reward_shaping.w_ruby,
+            "reward_shaping_w_floor_clear": self.reward_shaping.w_floor_clear}
 
         return config_dict
 

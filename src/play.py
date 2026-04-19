@@ -205,7 +205,7 @@ class CraftaxPlayer:
         mask_threshold = self.memories_mask_idx[:, None, None, None]
         self.mask = jnp.broadcast_to((indices >= mask_threshold).astype(jnp.bool_), (1, num_heads, 1, window_mem + 1))
 
-        logits, value, new_mem = self.network.apply(variables, self.memory, obs_for_net, self.mask, self.last_action, train=False, method=self.network.model_forward_eval)
+        logits, value, new_mem = self.network.apply(variables, self.memory, obs_for_net, self.mask, self.last_action, method=self.network.model_forward_eval)
         self.memory = self._update_transformer_memory(self.memory, new_mem)
 
         if self.use_action_masking and self.action_mask is not None:

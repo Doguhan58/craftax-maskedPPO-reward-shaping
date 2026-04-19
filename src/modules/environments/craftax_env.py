@@ -28,15 +28,14 @@ class CraftaxEnvironment:
         #log
         env = LogWrapper(basic_env)
 
+        if self.config.reward_shaping.enabled:
+            env = RewardShapingWrapper(env, config=self.config.reward_shaping)
+
         #batching
         if self.config.env.use_optimistic_resets:
             env = OptimisticResetVecEnvWrapper(env, num_envs=self.config.env.num_envs, reset_ratio=min(self.config.env.reset_ratio, self.config.env.num_envs))
         else:
             env = BatchEnvWrapper(env, num_envs=self.config.env.num_envs)
-
-        #reward shaping
-        if self.config.reward_shaping.enabled:
-            env = RewardShapingWrapper(env, num_envs=self.config.env.num_envs, config=self.config.reward_shaping)
 
         return env, env_params
 
