@@ -164,8 +164,6 @@ class RewardShapingWrapper:
         new_bow_seen = jnp.where(done, jnp.bool_(False), new_bow_seen)
 
         new_state = RewardShapingEnvState(env_state=new_inner_state, max_stone=new_max_stone, prev_features=feat_after,
-                                          floor_cleared=new_floor_cleared,
-                                          armour_enchanted_seen=new_armour_seen,
-                                          bow_enchanted_seen=new_bow_seen)
+                                          floor_cleared=new_floor_cleared, armour_enchanted_seen=new_armour_seen, bow_enchanted_seen=new_bow_seen)
 
         return obs, new_state, reward, done, info
