@@ -1,0 +1,19 @@
+{
+  "algorithm": "ppo",
+  "backend": "transformer",
+  "env_name": "Craftax-Symbolic-v1",
+  "seed": 2818,
+  "hidden_dim": 512,
+  "num_layers": 2,
+  "embed_dim": 256,
+  "num_heads": 8,
+  "head_dim": 64,
+  "mlp_ratio": 1,
+  "dropout": 0.0,
+  "gru_bias": 2.0,
+  "memory_len": 256,
+  "window_grad": 128,
+  "use_remat": true,
+  "add_last_action": true,
+  "use_action_masking": true
+}
