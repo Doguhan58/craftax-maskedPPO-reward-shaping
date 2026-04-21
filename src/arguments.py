@@ -94,6 +94,8 @@ class RewardShapingConfig:
     w_levelup: float = 1.5  #(STR/DEX/INT)
     w_sapphire: float = 1.0
     w_ruby: float = 1.0
+    w_enchant_armor: float = 2.0
+    w_enchant_bow: float = 2.0
     max_shaping_per_step: float = 8.0
     w_floor_clear: float = 3.0
 
@@ -214,7 +216,9 @@ class Config:
             "reward_shaping_kill_floor_scale": self.reward_shaping.kill_floor_scale,
             "reward_shaping_w_sapphire": self.reward_shaping.w_sapphire,
             "reward_shaping_w_ruby": self.reward_shaping.w_ruby,
-            "reward_shaping_w_floor_clear": self.reward_shaping.w_floor_clear}
+            "reward_shaping_w_floor_clear": self.reward_shaping.w_floor_clear,
+            "reward_shaping_w_enchant_armor": self.reward_shaping.w_enchant_armor,
+            "reward_shaping_w_enchant_bow": self.reward_shaping.w_enchant_bow}
 
         return config_dict
 

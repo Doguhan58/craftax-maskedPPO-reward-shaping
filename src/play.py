@@ -21,8 +21,8 @@ import glob as glob_mod
 @dataclass
 class PlayConfig:
     checkpoint_path: str = "checkpoints/ppo_gtrxl_"
-    deterministic: bool = False
-    render_fps: int = 10
+    deterministic: bool = True
+    render_fps: int = 30
     screen_width: int = 768
     screen_height: int = 768
     font_size: int = 24

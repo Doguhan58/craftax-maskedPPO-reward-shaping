@@ -34,6 +34,8 @@ def compute_action_mask(state):
     ench_base = (state.player_mana >= 9) & (facing_fire_table | facing_ice_table) & has_matching_gem
 
     item_on_tile = state.item_map[state.player_level][state.player_position[0], state.player_position[1]]
+    tile_light = state.light_map[state.player_level][state.player_position[0], state.player_position[1]]
+    is_dark_here = tile_light < 0.5
     has_xp = state.player_xp >= 1
 
     has_wood = inv.wood >= 1
@@ -101,7 +103,7 @@ def compute_action_mask(state):
         #27:CAST_ICEBALL
         state.learned_spells[1] & (state.player_mana >= 2) & can_shoot,
         #28:PLACE_TORCH
-        inv.torches > 0,
+        (inv.torches > 0) & is_dark_here,
         #29-34:DRINK_POTION_RED...YELLOW
         inv.potions[0] > 0,
         inv.potions[1] > 0,

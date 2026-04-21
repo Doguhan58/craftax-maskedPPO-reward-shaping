@@ -13,6 +13,8 @@ class RewardShapingEnvState:
     max_stone: jnp.ndarray #scalar int, high-water mark
     prev_features: jnp.ndarray #(14,) cached features from previous step
     floor_cleared: jnp.ndarray #(9,) floor clears this episode
+    armour_enchanted_seen: jnp.ndarray #(4,) bool, per-slot once per ep flags
+    bow_enchanted_seen: jnp.ndarray #scalar bool, once per ep
 
 
 #indices
@@ -46,6 +48,8 @@ class RewardShapingWrapper:
         self._kill_floor_scale = config.kill_floor_scale
         self._w_kill_base = config.w_kill
         self._w_floor_clear = config.w_floor_clear
+        self._w_enchant_armor = config.w_enchant_armor
+        self._w_enchant_bow = config.w_enchant_bow
 
 
     def __getattr__(self, name):
@@ -69,7 +73,8 @@ class RewardShapingWrapper:
         inner = env_state.env_state
         state = RewardShapingEnvState(env_state=env_state, max_stone=jnp.int32(0),
                                       prev_features=self._extract_features_array(inner),
-                                      floor_cleared=jnp.zeros((9,), dtype=jnp.bool_))
+                                      floor_cleared=jnp.zeros((9,), dtype=jnp.bool_),
+                                      armour_enchanted_seen=jnp.zeros((4,), dtype=jnp.bool_), bow_enchanted_seen=jnp.bool_(False))
 
         return obs, state
 
@@ -123,6 +128,18 @@ class RewardShapingWrapper:
         floor_clear_bonus = just_cleared.astype(jnp.float32) * (~already_cleared_this_ep).astype(jnp.float32) * self._w_floor_clear
         bonus = bonus + floor_clear_bonus
 
+        #enchantment milestones (one-shot per slot / per bow, per ep)
+        inner_after = new_inner_state.env_state
+        armour_now_ench = inner_after.armour_enchantments > 0
+        bow_now_ench = inner_after.bow_enchantment > 0
+
+        new_armour_slots = armour_now_ench & (~state.armour_enchanted_seen)
+        new_bow = bow_now_ench & (~state.bow_enchanted_seen)
+
+        armour_ench_bonus = jnp.sum(new_armour_slots.astype(jnp.float32)) * self._w_enchant_armor
+        bow_ench_bonus = new_bow.astype(jnp.float32) * self._w_enchant_bow
+        bonus = bonus + armour_ench_bonus + bow_ench_bonus
+
         #symmetric clip as pbrs can be negative on ascend
         bonus = jnp.clip(bonus, -self.max_shaping, self.max_shaping)
 
@@ -140,6 +157,15 @@ class RewardShapingWrapper:
         new_floor_cleared = state.floor_cleared.at[level_after].set(already_cleared_this_ep | just_cleared)
         new_floor_cleared = jnp.where(done, jnp.zeros_like(new_floor_cleared), new_floor_cleared)
 
-        new_state = RewardShapingEnvState(env_state=new_inner_state, max_stone=new_max_stone, prev_features=feat_after, floor_cleared=new_floor_cleared)
+        new_armour_seen = state.armour_enchanted_seen | new_armour_slots
+        new_armour_seen = jnp.where(done, jnp.zeros_like(new_armour_seen), new_armour_seen)
+
+        new_bow_seen = state.bow_enchanted_seen | new_bow
+        new_bow_seen = jnp.where(done, jnp.bool_(False), new_bow_seen)
+
+        new_state = RewardShapingEnvState(env_state=new_inner_state, max_stone=new_max_stone, prev_features=feat_after,
+                                          floor_cleared=new_floor_cleared,
+                                          armour_enchanted_seen=new_armour_seen,
+                                          bow_enchanted_seen=new_bow_seen)
 
         return obs, new_state, reward, done, info
