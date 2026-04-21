@@ -25,12 +25,14 @@ uv sync
 ### maskedPPO
 The agent was trained with PPO + GTrXL with [invalid action masking](https://arxiv.org/abs/2006.14171), masking out various actions every step to reduce the state-action space to explore and improve learning speed.
 
-The masking conditions are provided under `src/modules/environments/action_mask_wrapper.py`.
+The masking conditions are provided under `action_mask.md` and `src/modules/environments/action_mask_wrapper.py`.
 
 ### Reward Shaping
 The reward function was densified from one-time rewards to a wide range of repeated rewards, in addition to [Potential-Based Reward Shaping](https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf) for guiding agent behavior.
 
-The additional rewards can be found under `src/modules/environments/reward_shaping_wrapper.py`.
+The additional rewards can be found under `rewards.md` and `src/modules/environments/reward_shaping_wrapper.py`.
+
+**Opinion Note:** Although changing the reward function takes away from the sparse reward challenge aspect of Craftax, dividing the challenges and solving them in isolation first could result in better experiments.
 
 ## Training
 
